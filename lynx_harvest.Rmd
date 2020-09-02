@@ -1,7 +1,7 @@
 ---
-title: "Calibration EMR - CMR et PVA loup"
+title: "Reproduire les résultats de Harvest models of small populations of a large carnivore using Bayesian forecasting par Andrén et al. 2020"
 author: "Olivier Gimenez"
-date: "28/08/2020"
+date: "02/09/2020"
 output:
   pdf_document: default
   html_document: default
