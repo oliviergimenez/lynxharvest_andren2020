@@ -1,7 +1,7 @@
 ---
 title: "Reproduire les résultats de Harvest models of small populations of a large carnivore using Bayesian forecasting par Andrén et al. 2020"
 author: "Olivier Gimenez"
-date: "02/09/2020"
+date: "02/09/2020, 12/01/2023"
 output:
   pdf_document: default
   html_document: default
@@ -418,7 +418,7 @@ model1 <- function(){
   # Priors
   sigmaProc ~ dunif(0, 4)
   tauProc <- 1/sigmaProc^2
-  b[1] ~ dnorm(0, 3)
+  b[1] ~ dnorm(0, 1/3000)
 
   # Process model
   for (t in 1:(nyears)) {
@@ -470,6 +470,7 @@ Jetons un coup d'oeil aux estimations.
 ```{r}
 print(mod1_sweden, intervals = c(2.5/100, 50/100, 97.5/100))
 ```
+
 Le paramètre $b_1$ est estimé très proche de la valeur qu'on trouve dans le Tableau 4. 
 ```{r}
 mod1_sweden$BUGSoutput$mean$b
@@ -510,6 +511,7 @@ Jetons un coup d'oeil aux estimations.
 ```{r}
 print(mod1_norway, intervals = c(2.5/100, 50/100, 97.5/100))
 ```
+
 Le paramètre $b_1$ est estimé proche de la valeur qu'on trouve dans le Tableau 4. 
 ```{r}
 mod1_norway$BUGSoutput$mean$b
@@ -540,8 +542,8 @@ model2 <- function(){
   # Priors
   sigmaProc ~ dunif(0, 4)
   tauProc <- 1/sigmaProc^2
-  b[1] ~ dnorm(0, 1000)
-  b[2] ~ dnorm(0, 1000)
+  b[1] ~ dnorm(0, 1/3000)
+  b[2] ~ dnorm(0, 1/3000)
   # Process model
   for (t in 1:(nyears)) {
     mu[t] <- log(b[1] + b[2] * y[t])
@@ -597,7 +599,6 @@ mod2_sweden <- jags(data = bugs.data,
 													 n.burnin = 50000)
 ```
 
-
 Jetons un coup d'oeil aux estimations.
 ```{r}
 print(mod2_sweden, intervals = c(2.5/100, 50/100, 97.5/100))
@@ -619,14 +620,14 @@ glm(q ~ y, data = bugs.data, family = "poisson")
 ```
 
 
-
 Graphiquement, on obtient. 
 ```{r}
 swgrid <- seq(0, 200, length.out = length(dat_sweden$census))
+threshold <- - mod2_sweden$BUGSoutput$mean$b[1] / mod2_sweden$BUGSoutput$mean$b[2]
 ggplot() + 
   geom_point(data = dat_sweden, aes(x = census, y = quota_1), color = "black") +
   geom_line(data = dat_sweden, aes(x = swgrid, y = mod1_sweden$BUGSoutput$mean$b * swgrid), color = "black", lty = "dashed") + 
-  geom_line(data = dat_sweden, aes(x = swgrid, y = (mod2_sweden$BUGSoutput$mean$b[1] +  mod2_sweden$BUGSoutput$mean$b[2] * swgrid)), color = "black") + 
+  geom_line(data = dat_sweden, aes(x = swgrid, y = if_else(swgrid < threshold, 0, (mod2_sweden$BUGSoutput$mean$b[1] +  mod2_sweden$BUGSoutput$mean$b[2] * swgrid))), color = "black") + 
   expand_limits(x = 0, y = 0) +
   labs(x = "Number of family groups (year t - 1)",
        y = "Lynx quota (year t)")
@@ -663,12 +664,18 @@ mod2_norway <- jags(data = bugs.data,
 													 n.burnin = 50000)
 ```
 
+```{r}
+threshold <- - mod2_norway$BUGSoutput$mean$b[1] / mod2_norway$BUGSoutput$mean$b[2]
+threshold
+```
+
 
 Jetons un coup d'oeil aux estimations.
 ```{r}
 print(mod2_norway, intervals = c(2.5/100, 50/100, 97.5/100))
 ```
-Le paramètre $b_1$ est estimé proche de la valeur qu'on trouve dans le Tableau 4. 
+
+Les paramètres de régression sont estimés proches de la valeur qu'on trouve dans le Tableau 4. 
 ```{r}
 mod2_norway$BUGSoutput$mean$b
 ```
@@ -676,15 +683,15 @@ mod2_norway$BUGSoutput$mean$b
 Graphiquement, on obtient. 
 ```{r}
 nwgrid <- seq(0, 200, length.out = length(dat_norway$census))
+
 ggplot() + 
   geom_point(data = dat_norway, aes(x = census, y = quota_1), color = "black") +
   geom_line(data = dat_norway, aes(x = nwgrid, y = mod1_norway$BUGSoutput$mean$b * nwgrid), color = "black", lty = "dashed") + 
-  geom_line(data = dat_norway, aes(x = nwgrid, y = (mod2_norway$BUGSoutput$mean$b[1] +  mod2_norway$BUGSoutput$mean$b[2] * nwgrid)), color = "black") + 
+  geom_line(data = dat_norway, aes(x = nwgrid, y = if_else(nwgrid < threshold, 0, (mod2_norway$BUGSoutput$mean$b[1] +  mod2_norway$BUGSoutput$mean$b[2] * nwgrid))), color = "black") + 
   expand_limits(x = 0, y = 0) +
   labs(x = "Number of family groups (year t - 1)",
        y = "Lynx quota (year t)")
 ```
 
-Je n'arrive pas reproduire ce satané modèle à seuil avec l'intercept non-nul, les lignes en trait plein de la figure 4 du papier. Grrrr. On arrive aux estimations du Tableau 3 via une simple régression hein, donc c'est pas bien grave. 
 
 
